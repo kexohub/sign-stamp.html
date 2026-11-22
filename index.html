@@ -64,9 +64,6 @@ code,.mark{background:var(--code);border:1px solid var(--line);border-radius:5px
 aside .card h3{margin:0 0 8px;font-size:15px}
 aside ol{margin:0;padding-left:18px}
 aside li{margin-bottom:8px;font-size:13.5px}
-#preview{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px;background:#fff;color:#000}
-#preview .docx-wrapper{padding:10px!important;background:#e9ecf3!important}
-#preview section.docx{box-shadow:none!important;margin-bottom:8px!important;transform-origin:top left}
 </style>
 
 <div class="wrap">
@@ -120,13 +117,11 @@ aside li{margin-bottom:8px;font-size:13.5px}
 
       <section class="card" id="c3">
         <h2><span class="step" id="st3">3</span>Результат</h2>
-        <p class="lead">Оригінальний файл не змінюється, створюється новий із підписом.</p>
+        <p class="lead">Оригінальний файл не змінюється, створюється новий .docx із підписом. Для друку відкрийте його у Word і виберіть «Зберегти як PDF»: так сторінки й підпис стоять точно на своїх місцях. Якщо документ уже є готовим PDF, скористайтеся сторінкою «Підпис у PDF».</p>
         <div class="row" style="margin-top:0">
           <button type="button" class="primary" id="goBtn" disabled>Поставити підпис і зберегти .docx</button>
-          <button type="button" id="prevBtn" disabled>Подивитись результат</button>
         </div>
         <div class="toast" id="toast" role="status"></div>
-        <div id="preview" hidden></div>
       </section>
     </main>
 
@@ -405,31 +400,10 @@ $("goBtn").addEventListener("click",async function(){
   refresh();$("st3").classList.add("done");
 });
 
-/* ---------- перегляд результату (необов'язково) ---------- */
-var previewLoaded=null;
-function loadPreviewLib(){
-  if(previewLoaded)return previewLoaded;
-  previewLoaded=new Promise(function(res,rej){
-    var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js";
-    s.onload=function(){res();};s.onerror=function(){rej(new Error("не вдалося завантажити модуль перегляду"));};document.head.appendChild(s);
-  });return previewLoaded;
-}
-$("prevBtn").addEventListener("click",async function(){
-  this.disabled=true;toast("Готую перегляд…");
-  try{
-    var res=state.resultBlob?{blob:state.resultBlob}:await buildResult();state.resultBlob=res.blob;
-    await loadPreviewLib();
-    var box=$("preview");box.hidden=false;box.innerHTML="";
-    await window.docx.renderAsync(res.blob,box,null,{inWrapper:true,ignoreWidth:false,ignoreHeight:false,breakPages:true});
-    toast("Це наближений перегляд. Остаточний вигляд дивіться у Word.");
-  }catch(e){toast("Перегляд недоступний: "+e.message,true);}
-  refresh();
-});
-
 function refresh(){
   var okDoc=!!state.zip&&state.found>0,okSig=!!state.sigBlob;
   $("st1").classList.toggle("done",okDoc);$("st2").classList.toggle("done",okSig);
-  $("goBtn").disabled=!(okDoc&&okSig);$("prevBtn").disabled=!(okDoc&&okSig);
+  $("goBtn").disabled=!(okDoc&&okSig);
 }
 $("themeBtn").addEventListener("click",function(){
   var r=document.documentElement,cur=r.getAttribute("data-theme");
