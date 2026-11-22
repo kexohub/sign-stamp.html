@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Підпис у документ</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Макет: три послідовні картки (документ, підпис, результат) і праворуч жива перевірка того, що знайдено. */
+:root{
+  --bg:#f5f6f8; --paper:#ffffff; --ink:#1b2030; --muted:#5d6579; --line:#dfe3ec;
+  --pen:#1f3fbf; --pen-soft:#e8edfc; --ok:#1c7a4d; --warn:#b4541a; --warn-soft:#fdf0e6; --code:#f0f2f7;
+  --check1:#ffffff; --check2:#e9ecf3;
+  --font-ui:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-hand:'Marck Script','Segoe Script','Bradley Hand',cursive;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151d; --paper:#1a1f2b; --ink:#e8eaf2; --muted:#98a1b6; --line:#2d3446;
+  --pen:#8fa6ff; --pen-soft:#232b49; --ok:#5fd09a; --warn:#f0a36b; --warn-soft:#3a2a1d; --code:#141823;
+  --check1:#e9ecf3; --check2:#cfd5e2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151d; --paper:#1a1f2b; --ink:#e8eaf2; --muted:#98a1b6; --line:#2d3446;
+  --pen:#8fa6ff; --pen-soft:#232b49; --ok:#5fd09a; --warn:#f0a36b; --warn-soft:#3a2a1d; --code:#141823;
+  --check1:#e9ecf3; --check2:#cfd5e2; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1100px;margin:0 auto}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:16px}
+h1{font:400 clamp(30px,5vw,44px)/1.05 var(--font-hand);color:var(--pen);margin:0}
+.sub{color:var(--muted);margin:4px 0 0;max-width:64ch}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)}}
+section.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+section.card h2{font-size:17px;margin:0 0 2px;font-weight:600;display:flex;align-items:center;gap:10px}
+.step{width:24px;height:24px;border-radius:50%;background:var(--pen-soft);color:var(--pen);font-size:13px;display:inline-grid;place-items:center;flex:none}
+.step.done{background:var(--ok);color:var(--paper)}
+.lead{color:var(--muted);font-size:13.5px;margin:2px 0 12px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;cursor:pointer;color:var(--muted);transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--pen);background:var(--pen-soft)}
+.drop b{color:var(--ink)}
+.drop .name{color:var(--pen);font-weight:600;word-break:break-all}
+input[type=text],input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible,.drop:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;margin-top:12px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:150px;flex:1}
+.f label{font-size:12.5px;font-weight:600}
+.hint{font-size:12px;color:var(--muted)}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:8px 12px}
+button:hover:not(:disabled){border-color:var(--pen)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:var(--pen);color:var(--paper);border-color:var(--pen);font-weight:600}
+button.mini{padding:6px 9px;font-size:12.5px}
+input[type=range]{width:100%;accent-color:var(--pen)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;flex:1;background:var(--bg);padding:7px 8px;font-size:13px}
+.seg button.on{background:var(--pen);color:var(--paper)}
+.checker{background-image:linear-gradient(45deg,var(--check2) 25%,transparent 25%,transparent 75%,var(--check2) 75%),linear-gradient(45deg,var(--check2) 25%,transparent 25%,transparent 75%,var(--check2) 75%);background-color:var(--check1);background-size:16px 16px;background-position:0 0,8px 8px;border:1px solid var(--line);border-radius:10px;min-height:110px;display:grid;place-items:center;padding:10px;margin-top:12px}
+.checker img{max-width:100%;max-height:180px;display:block}
+.found{border-radius:10px;padding:10px 12px;font-size:13.5px;margin-top:12px;background:var(--code);border:1px solid var(--line)}
+.found.ok{border-color:var(--ok)}
+.found.none{border-color:var(--warn);background:var(--warn-soft)}
+.found ul{margin:4px 0 0;padding-left:18px}
+code,.mark{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font:13px ui-monospace,Menlo,Consolas,monospace}
+.toast{font-size:13px;color:var(--ok);min-height:20px;margin-top:8px}
+.toast.err{color:var(--warn)}
+aside .card h3{margin:0 0 8px;font-size:15px}
+aside ol{margin:0;padding-left:18px}
+aside li{margin-bottom:8px;font-size:13.5px}
+@media (max-width:640px){
+  body{font-size:14.5px}
+  section.card{padding:14px}
+  .row{gap:12px}
+  .row .f,.toolbar .f{flex:1 1 100%;min-width:0}
+  .row>button,.toolbar>button{flex:1 1 auto}
+  button{min-height:42px}
+  button.mini{padding:9px 11px;font-size:13px}
+  .seg button{padding:9px 4px;font-size:13px;min-height:42px;white-space:nowrap}
+  .desk{max-height:none;padding:8px}
+  .drop{padding:14px 10px}
+  header.top{align-items:flex-start}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Підпис у документ</h1>
+      <p class="sub">Завантажте Word-файл із міткою на місці підпису та фото вашого підпису. Мітка буде замінена підписом, а готовий .docx зберігається у вас.</p>
+    </div>
+    <button id="themeBtn" class="mini" type="button">Тема</button>
+  </header>
+
+  <div class="layout">
+    <main>
+      <section class="card" id="c1">
+        <h2><span class="step" id="st1">1</span>Документ Word</h2>
+        <p class="lead">Файл .docx з міткою у тому місці, де має стояти підпис.</p>
+        <div class="drop" id="dropDoc" tabindex="0" role="button" aria-label="Вибрати файл документа">
+          <div id="docLbl"><b>Перетягніть .docx сюди</b> або натисніть, щоб вибрати</div>
+        </div>
+        <input type="file" id="docIn" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+        <div class="row">
+          <div class="f"><label for="marker">Мітка в документі</label>
+            <input type="text" id="marker" value="{{підпис}}" autocomplete="off">
+            <div class="hint">Регістр не має значення. Можна позначати кілька місць, у тілі документа й у колонтитулі.</div></div>
+          <button type="button" class="mini" id="copyMark">Копіювати мітку</button>
+        </div>
+        <div id="found" class="found" hidden></div>
+      </section>
+
+      <section class="card" id="c2">
+        <h2><span class="step" id="st2">2</span>Фото підпису</h2>
+        <p class="lead">Підпис на білому аркуші, сфотографований рівно й при хорошому світлі. Фон і тіні буде прибрано автоматично.</p>
+        <div class="drop" id="dropSig" tabindex="0" role="button" aria-label="Вибрати фото підпису">
+          <div id="sigLbl"><b>Перетягніть фото сюди</b> або натисніть, щоб вибрати</div>
+        </div>
+        <input type="file" id="sigIn" accept="image/*" hidden>
+        <div class="row">
+          <div class="f"><label for="sens">Чіткість: <span id="sensV">50</span></label>
+            <input type="range" id="sens" min="1" max="100" value="50">
+            <div class="hint">Збільшуйте, якщо підпис блідий. Зменшуйте, якщо видно крапки фону.</div></div>
+          <div class="f"><label>Колір</label>
+            <div class="seg" id="colorSeg"><button type="button" class="on" data-c="blue">Синій</button><button type="button" data-c="black">Чорний</button><button type="button" data-c="orig">Оригінал</button></div></div>
+        </div>
+        <div class="row">
+          <div class="f"><label for="wmm">Ширина підпису в документі, мм</label>
+            <input type="number" id="wmm" min="10" max="120" step="1" value="35"></div>
+          <button type="button" class="mini" id="rotBtn" disabled>Повернути на 90°</button>
+        </div>
+        <div class="checker" id="sigPrev"><span class="hint">Тут з'явиться підпис без фону</span></div>
+      </section>
+
+      <section class="card" id="c3">
+        <h2><span class="step" id="st3">3</span>Результат</h2>
+        <p class="lead">Оригінальний файл не змінюється, створюється новий .docx із підписом. Для друку відкрийте його у Word і виберіть «Зберегти як PDF»: так сторінки й підпис стоять точно на своїх місцях. Якщо документ уже є готовим PDF, скористайтеся сторінкою «Підпис у PDF».</p>
+        <div class="row" style="margin-top:0">
+          <button type="button" class="primary" id="goBtn" disabled>Поставити підпис і зберегти .docx</button>
+        </div>
+        <div class="toast" id="toast" role="status"></div>
+      </section>
+    </main>
+
+    <aside>
+      <section class="card">
+        <h3>Як позначити місце підпису</h3>
+        <ol>
+          <li>Відкрийте документ у Word.</li>
+          <li>Поставте курсор туди, де має бути підпис. Зазвичай це рядок над «(підпис)».</li>
+          <li>Надрукуйте мітку <span class="mark">{{підпис}}</span> і збережіть файл.</li>
+          <li>Завантажте його сюди. Для кількох сторінок додайте мітку на кожній або в колонтитулі.</li>
+        </ol>
+      </section>
+      <section class="card">
+        <h3>Приватність</h3>
+        <p class="hint" style="margin:0">Документ і фото обробляються тільки у вашому браузері й нікуди не надсилаються. З інтернету підвантажуються лише шрифти й скрипти сторінки.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script src="jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+var NS={w:"http://schemas.openxmlformats.org/wordprocessingml/2006/main",wp:"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+  a:"http://schemas.openxmlformats.org/drawingml/2006/main",pic:"http://schemas.openxmlformats.org/drawingml/2006/picture",
+  r:"http://schemas.openxmlformats.org/officeDocument/2006/relationships",rel:"http://schemas.openxmlformats.org/package/2006/relationships",
+  xml:"http://www.w3.org/XML/1998/namespace"};
+var $=function(id){return document.getElementById(id);};
+var state={docFile:null,docName:"",zip:null,sigImg:null,sigRot:0,sigBlob:null,sigW:0,sigH:0,color:"blue",resultBlob:null};
+
+function toast(m,err){var t=$("toast");t.textContent=m;t.className="toast"+(err?" err":"");}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* ---------- вибір файлів ---------- */
+function wireDrop(box,input,cb){
+  box.addEventListener("click",function(){input.click();});
+  box.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click();}});
+  ["dragenter","dragover"].forEach(function(ev){box.addEventListener(ev,function(e){e.preventDefault();box.classList.add("over");});});
+  ["dragleave","drop"].forEach(function(ev){box.addEventListener(ev,function(e){e.preventDefault();box.classList.remove("over");});});
+  box.addEventListener("drop",function(e){var f=e.dataTransfer.files[0];if(f)cb(f);});
+  input.addEventListener("change",function(){if(input.files[0])cb(input.files[0]);input.value="";});
+}
+wireDrop($("dropDoc"),$("docIn"),loadDoc);
+wireDrop($("dropSig"),$("sigIn"),loadSig);
+
+async function loadDoc(f){
+  if(!/\.docx$/i.test(f.name)){toast("Потрібен файл .docx. Старий .doc спершу збережіть у Word як .docx.",true);return;}
+  try{
+    state.zip=await JSZip.loadAsync(await f.arrayBuffer());
+    if(!state.zip.file("word/document.xml"))throw new Error("немає word/document.xml");
+  }catch(e){state.zip=null;toast("Не вдалося відкрити файл: "+e.message,true);return;}
+  state.docFile=f;state.docName=f.name;
+  $("docLbl").innerHTML='<span class="name">'+esc(f.name)+'</span><br><span class="hint">Натисніть, щоб вибрати інший</span>';
+  toast("");state.resultBlob=null;scan();refresh();
+}
+
+/* ---------- пошук міток ---------- */
+function partNames(zip){return Object.keys(zip.files).filter(function(n){return /^word\/(document|header\d*|footer\d*)\.xml$/.test(n);});}
+function partTitle(n){return n==="word/document.xml"?"основний текст":(/header/.test(n)?"верхній колонтитул":"нижній колонтитул");}
+function ownerP(el){var p=el.parentNode;while(p&&!(p.localName==="p"&&p.namespaceURI===NS.w))p=p.parentNode;return p;}
+function ownTexts(p){
+  var all=p.getElementsByTagNameNS(NS.w,"t"),out=[];
+  for(var i=0;i<all.length;i++)if(ownerP(all[i])===p)out.push(all[i]);
+  return out;
+}
+function markerRE(){
+  var m=$("marker").value.trim();if(!m)return null;
+  return new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/\s+/g,"\\s*"),"i");
+}
+function findInP(p,re){var ts=ownTexts(p),txt=ts.map(function(t){return t.textContent;}).join("");var m=re.exec(txt);return m?{ts:ts,m:m,txt:txt}:null;}
+
+async function scan(){
+  var box=$("found");box.hidden=false;
+  var re=markerRE();
+  if(!state.zip){box.hidden=true;return;}
+  if(!re){box.className="found none";box.textContent="Введіть мітку, яку треба шукати.";return;}
+  var res=[],total=0;
+  var names=partNames(state.zip);
+  for(var i=0;i<names.length;i++){
+    var xml=await state.zip.file(names[i]).async("string");
+    var doc=new DOMParser().parseFromString(xml,"application/xml");
+    var ps=doc.getElementsByTagNameNS(NS.w,"p"),c=0;
+    for(var k=0;k<ps.length;k++){
+      var txt=ownTexts(ps[k]).map(function(t){return t.textContent;}).join("");
+      var g=new RegExp(re.source,"gi"),mm;while((mm=g.exec(txt)))c++;
+    }
+    if(c){res.push([names[i],c]);total+=c;}
+  }
+  state.found=total;
+  if(total){
+    box.className="found ok";
+    box.innerHTML='<b>Знайдено міток: '+total+'</b><ul>'+res.map(function(r){return '<li>'+partTitle(r[0])+': '+r[1]+'</li>';}).join("")+'</ul>';
+  }else{
+    box.className="found none";
+    box.innerHTML='<b>Міток не знайдено.</b> Додайте в документ текст <span class="mark">'+esc($("marker").value)+'</span> там, де має бути підпис, і завантажте файл знову.';
+  }
+  refresh();
+}
+$("marker").addEventListener("input",function(){scan();});
+$("copyMark").addEventListener("click",function(){
+  var t=$("marker").value;
+  try{navigator.clipboard.writeText(t).then(function(){toast("Мітку скопійовано");},function(){$("marker").select();toast("Виділено, натисніть Ctrl+C",true);});}
+  catch(e){$("marker").select();toast("Виділено, натисніть Ctrl+C",true);}
+});
+
+/* ---------- обробка фото підпису ---------- */
+async function loadSig(f){
+  if(!/^image\//.test(f.type)){toast("Потрібне зображення (JPG, PNG, HEIC з телефону краще перед тим зберегти як JPG).",true);return;}
+  try{
+    var url=URL.createObjectURL(f);
+    var img=await new Promise(function(res,rej){var i=new Image();i.onload=function(){res(i);};i.onerror=function(){rej(new Error("формат не підтримується браузером"));};i.src=url;});
+    state.sigImg=img;state.sigRot=0;
+    $("sigLbl").innerHTML='<span class="name">'+esc(f.name)+'</span><br><span class="hint">Натисніть, щоб вибрати інше</span>';
+    $("rotBtn").disabled=false;toast("");processSig();
+  }catch(e){toast("Не вдалося прочитати фото: "+e.message,true);}
+}
+$("rotBtn").addEventListener("click",function(){state.sigRot=(state.sigRot+90)%360;processSig();});
+$("sens").addEventListener("input",function(){$("sensV").textContent=this.value;processSig();});
+$("colorSeg").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;
+  state.color=b.getAttribute("data-c");[].forEach.call(this.children,function(x){x.classList.toggle("on",x===b);});processSig();});
+$("wmm").addEventListener("input",function(){state.resultBlob=null;});
+
+function maxFilter(src,w,h,R){ // розділене «максимум у вікні»
+  var tmp=new Float32Array(w*h),out=new Float32Array(w*h),x,y,k,m;
+  for(y=0;y<h;y++)for(x=0;x<w;x++){m=0;for(k=Math.max(0,x-R);k<=Math.min(w-1,x+R);k++){var v=src[y*w+k];if(v>m)m=v;}tmp[y*w+x]=m;}
+  for(x=0;x<w;x++)for(y=0;y<h;y++){m=0;for(k=Math.max(0,y-R);k<=Math.min(h-1,y+R);k++){var v2=tmp[k*w+x];if(v2>m)m=v2;}out[y*w+x]=m;}
+  return out;
+}
+function boxBlur(src,w,h,R){
+  var tmp=new Float32Array(w*h),out=new Float32Array(w*h),x,y,k,s,n;
+  for(y=0;y<h;y++)for(x=0;x<w;x++){s=0;n=0;for(k=Math.max(0,x-R);k<=Math.min(w-1,x+R);k++){s+=src[y*w+k];n++;}tmp[y*w+x]=s/n;}
+  for(x=0;x<w;x++)for(y=0;y<h;y++){s=0;n=0;for(k=Math.max(0,y-R);k<=Math.min(h-1,y+R);k++){s+=tmp[k*w+x];n++;}out[y*w+x]=s/n;}
+  return out;
+}
+function processSig(){
+  var img=state.sigImg;if(!img)return;
+  var MAX=1400,sc=Math.min(1,MAX/Math.max(img.naturalWidth,img.naturalHeight));
+  var w0=Math.round(img.naturalWidth*sc),h0=Math.round(img.naturalHeight*sc);
+  var rot=state.sigRot,swap=rot===90||rot===270,W=swap?h0:w0,H=swap?w0:h0;
+  var cv=document.createElement("canvas");cv.width=W;cv.height=H;
+  var cx=cv.getContext("2d",{willReadFrequently:true});
+  cx.translate(W/2,H/2);cx.rotate(rot*Math.PI/180);cx.drawImage(img,-w0/2,-h0/2,w0,h0);cx.setTransform(1,0,0,1,0,0);
+  var id=cx.getImageData(0,0,W,H),d=id.data,n=W*H,gray=new Float32Array(n);
+  for(var i=0;i<n;i++)gray[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+  // оцінка фону: зменшена копія → максимум у вікні → розмиття
+  var F=4,sw=Math.ceil(W/F),sh=Math.ceil(H/F),small=new Float32Array(sw*sh),x,y;
+  for(y=0;y<sh;y++)for(x=0;x<sw;x++){var s=0,c=0;for(var yy=y*F;yy<Math.min(H,y*F+F);yy++)for(var xx=x*F;xx<Math.min(W,x*F+F);xx++){s+=gray[yy*W+xx];c++;}small[y*sw+x]=s/c;}
+  var bg=boxBlur(boxBlur(maxFilter(small,sw,sh,9),sw,sh,5),sw,sh,5);
+  var sens=+$("sens").value,t0=40-(sens/100)*34,t1=t0+55;
+  var alpha=new Float32Array(n);
+  for(y=0;y<H;y++){var by=Math.min(sh-1,y/F),y0=Math.floor(by),y1=Math.min(sh-1,y0+1),fy=by-y0;
+    for(x=0;x<W;x++){var bx=Math.min(sw-1,x/F),x0=Math.floor(bx),x1=Math.min(sw-1,x0+1),fx=bx-x0;
+      var b=(bg[y0*sw+x0]*(1-fx)+bg[y0*sw+x1]*fx)*(1-fy)+(bg[y1*sw+x0]*(1-fx)+bg[y1*sw+x1]*fx)*fy;
+      var v=(b-gray[y*W+x]-t0)/(t1-t0);alpha[y*W+x]=v<0?0:(v>1?1:v);}}
+  // прибрати поодинокі крапки
+  var clean=new Float32Array(n);
+  for(y=1;y<H-1;y++)for(x=1;x<W-1;x++){var a=alpha[y*W+x];if(a<=0)continue;
+    var cnt=0;for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){if((dx||dy)&&alpha[(y+dy)*W+x+dx]>0.25)cnt++;}
+    clean[y*W+x]=(cnt>=2||a>0.8)?a:0;}
+  var col=state.color==="black"?[20,20,25]:[31,63,191];
+  var minX=W,minY=H,maxX=-1,maxY=-1;
+  for(y=0;y<H;y++)for(x=0;x<W;x++){var i2=y*W+x,aa=clean[i2];
+    if(aa>0.15){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+    if(state.color==="orig"){d[i2*4]=Math.min(255,d[i2*4]*0.6);d[i2*4+1]=Math.min(255,d[i2*4+1]*0.6);d[i2*4+2]=Math.min(255,d[i2*4+2]*0.6);}
+    else{d[i2*4]=col[0];d[i2*4+1]=col[1];d[i2*4+2]=col[2];}
+    d[i2*4+3]=Math.round(aa*255);}
+  if(maxX<0){state.sigBlob=null;$("sigPrev").innerHTML='<span class="hint">Підпис не знайдено. Збільште чіткість або перефотографуйте на білому аркуші.</span>';refresh();return;}
+  var pad=Math.round(0.04*Math.max(maxX-minX,maxY-minY));
+  minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(W-1,maxX+pad);maxY=Math.min(H-1,maxY+pad);
+  cx.putImageData(id,0,0);
+  var out=document.createElement("canvas");out.width=maxX-minX+1;out.height=maxY-minY+1;
+  out.getContext("2d").drawImage(cv,minX,minY,out.width,out.height,0,0,out.width,out.height);
+  state.sigW=out.width;state.sigH=out.height;
+  out.toBlob(function(b){
+    state.sigBlob=b;state.resultBlob=null;
+    var im=new Image();im.alt="Підпис без фону";im.src=URL.createObjectURL(b);
+    var box=$("sigPrev");box.innerHTML="";box.appendChild(im);refresh();
+  },"image/png");
+}
+
+/* ---------- вставка у docx ---------- */
+function drawingXML(rid,cx,cy,id){
+  return '<w:drawing xmlns:w="'+NS.w+'" xmlns:wp="'+NS.wp+'" xmlns:a="'+NS.a+'" xmlns:pic="'+NS.pic+'" xmlns:r="'+NS.r+'">'+
+  '<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+id+'" name="Підпис '+id+'"/>'+
+  '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'+
+  '<a:graphic><a:graphicData uri="'+NS.pic+'"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="signature.png"/><pic:cNvPicPr/></pic:nvPicPr>'+
+  '<pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'+
+  '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'+
+  '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>';
+}
+function setT(t,text){t.textContent=text;t.setAttributeNS(NS.xml,"xml:space","preserve");}
+
+function stampPart(doc,re,rid,cx,cy,idBase){
+  var n=0,guard=0,paras=doc.getElementsByTagNameNS(NS.w,"p");
+  var list=[];for(var i=0;i<paras.length;i++)list.push(paras[i]);
+  list.forEach(function(p){
+    var hit;
+    while(guard++<500&&(hit=findInP(p,new RegExp(re.source,"i")))){
+      var ts=hit.ts,s=hit.m.index,e=s+hit.m[0].length,pos=0,i0=-1,i1=-1,st0=0,st1=0;
+      for(var k=0;k<ts.length;k++){var len=ts[k].textContent.length;
+        if(i0<0&&pos+len>s){i0=k;st0=pos;}
+        if(pos+len>=e&&pos<e&&i1<0){i1=k;st1=pos;}
+        pos+=len;}
+      if(i0<0||i1<0)break;
+      var t0=ts[i0],t1=ts[i1],r0=t0.parentNode,before=t0.textContent.slice(0,s-st0),after=t1.textContent.slice(e-st1);
+      var drawing=doc.importNode(new DOMParser().parseFromString(drawingXML(rid,cx,cy,idBase+n),"application/xml").documentElement,true);
+      var run=doc.createElementNS(NS.w,"w:r");run.appendChild(drawing);
+      var parent=r0.parentNode;
+      if(i0===i1){
+        var tail=null;
+        if(after){tail=doc.createElementNS(NS.w,"w:r");var rpr=r0.getElementsByTagNameNS(NS.w,"rPr")[0];
+          if(rpr&&rpr.parentNode===r0)tail.appendChild(rpr.cloneNode(true));
+          var nt=doc.createElementNS(NS.w,"w:t");setT(nt,after);tail.appendChild(nt);}
+        setT(t0,before);
+        parent.insertBefore(run,r0.nextSibling);
+        if(tail)parent.insertBefore(tail,run.nextSibling);
+      }else{
+        setT(t0,before);setT(t1,after);
+        for(var m=i0+1;m<i1;m++)setT(ts[m],"");
+        parent.insertBefore(run,r0.nextSibling);
+      }
+      n++;
+    }
+  });
+  return n;
+}
+
+async function buildResult(){
+  var zip=await JSZip.loadAsync(await state.docFile.arrayBuffer());   // свіжа копія
+  var re=markerRE(),mm=+$("wmm").value||35;
+  var cx=Math.round(mm*36000),cy=Math.round(mm*36000*state.sigH/state.sigW);
+  zip.file("word/media/signature_stamp.png",await state.sigBlob.arrayBuffer());
+  var total=0,names=partNames(zip),idBase=9000;
+  for(var i=0;i<names.length;i++){
+    var name=names[i],xml=await zip.file(name).async("string");
+    var doc=new DOMParser().parseFromString(xml,"application/xml");
+    if(doc.getElementsByTagName("parsererror").length)throw new Error("помилка XML у "+name);
+    var rid="rIdSignStamp";
+    var n=stampPart(doc,re,rid,cx,cy,idBase);idBase+=100;
+    if(!n)continue;total+=n;
+    var relName=name.replace("word/","word/_rels/")+".rels",relXML;
+    if(zip.file(relName))relXML=await zip.file(relName).async("string");
+    else relXML='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="'+NS.rel+'"/>';
+    var rd=new DOMParser().parseFromString(relXML,"application/xml");
+    var ex=rd.createElementNS(NS.rel,"Relationship");
+    ex.setAttribute("Id",rid);ex.setAttribute("Type",NS.r+"/image");ex.setAttribute("Target","media/signature_stamp.png");
+    rd.documentElement.appendChild(ex);
+    zip.file(relName,'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+new XMLSerializer().serializeToString(rd.documentElement));
+    zip.file(name,'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+new XMLSerializer().serializeToString(doc.documentElement));
+  }
+  if(!total)throw new Error("у документі не знайдено мітку");
+  var ct=await zip.file("[Content_Types].xml").async("string");
+  if(!/Extension="png"/i.test(ct)){
+    ct=ct.replace(/<Types([^>]*)>/,'<Types$1><Default Extension="png" ContentType="image/png"/>');
+    zip.file("[Content_Types].xml",ct);
+  }
+  var blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",compression:"DEFLATE"});
+  return {blob:blob,count:total};
+}
+function outName(){return state.docName.replace(/\.docx$/i,"")+"_підписаний.docx";}
+
+$("goBtn").addEventListener("click",async function(){
+  this.disabled=true;toast("Ставлю підпис…");
+  var res;
+  try{res=await buildResult();}catch(e){toast("Не вийшло: "+e.message,true);refresh();return;}
+  state.resultBlob=res.blob;
+  var name=outName();
+  try{
+    var d=(typeof claude!=="undefined")?await claude.use("downloads"):null;
+    if(d){await d.save({filename:name,data:res.blob});}
+    else{var url=URL.createObjectURL(res.blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);}
+    toast("Готово: підпис поставлено "+res.count+" раз(ів). Файл: "+name);
+  }catch(e){if(e&&e.code==="declined")toast("Збереження скасовано.");else toast("Підпис поставлено, але файл не вдалося зберегти автоматично.",true);}
+  refresh();$("st3").classList.add("done");
+});
+
+function refresh(){
+  var okDoc=!!state.zip&&state.found>0,okSig=!!state.sigBlob;
+  $("st1").classList.toggle("done",okDoc);$("st2").classList.toggle("done",okSig);
+  $("goBtn").disabled=!(okDoc&&okSig);
+}
+$("themeBtn").addEventListener("click",function(){
+  var r=document.documentElement,cur=r.getAttribute("data-theme");
+  var dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme",dark?"light":"dark");
+});
+})();
+</script>
+
+</html>

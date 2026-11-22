@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Підпис у PDF</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* Макет: зверху файли й параметри, нижче сторінки PDF, де підпис розставляється мишкою; збереження одразу в PDF. */
+:root{
+  --bg:#f5f6f8; --paper:#ffffff; --ink:#1b2030; --muted:#5d6579; --line:#dfe3ec;
+  --pen:#1f3fbf; --pen-soft:#e8edfc; --ok:#1c7a4d; --warn:#b4541a; --warn-soft:#fdf0e6; --code:#f0f2f7;
+  --check1:#ffffff; --check2:#e9ecf3; --desk:#d9dde8;
+  --font-ui:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-hand:'Marck Script','Segoe Script','Bradley Hand',cursive;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151d; --paper:#1a1f2b; --ink:#e8eaf2; --muted:#98a1b6; --line:#2d3446;
+  --pen:#8fa6ff; --pen-soft:#232b49; --ok:#5fd09a; --warn:#f0a36b; --warn-soft:#3a2a1d; --code:#141823;
+  --check1:#e9ecf3; --check2:#cfd5e2; --desk:#0d1017; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151d; --paper:#1a1f2b; --ink:#e8eaf2; --muted:#98a1b6; --line:#2d3446;
+  --pen:#8fa6ff; --pen-soft:#232b49; --ok:#5fd09a; --warn:#f0a36b; --warn-soft:#3a2a1d; --code:#141823;
+  --check1:#e9ecf3; --check2:#cfd5e2; --desk:#0d1017; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1000px;margin:0 auto}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:16px}
+h1{font:400 clamp(30px,5vw,44px)/1.05 var(--font-hand);color:var(--pen);margin:0}
+.sub{color:var(--muted);margin:4px 0 0;max-width:66ch}
+section.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+section.card h2{font-size:17px;margin:0 0 2px;font-weight:600;display:flex;align-items:center;gap:10px}
+.step{width:24px;height:24px;border-radius:50%;background:var(--pen-soft);color:var(--pen);font-size:13px;display:inline-grid;place-items:center;flex:none}
+.step.done{background:var(--ok);color:var(--paper)}
+.lead{color:var(--muted);font-size:13.5px;margin:2px 0 12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:16px;text-align:center;cursor:pointer;color:var(--muted);transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--pen);background:var(--pen-soft)}
+.drop b{color:var(--ink)}
+.drop .name{color:var(--pen);font-weight:600;word-break:break-all}
+input[type=text],input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible,.drop:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;margin-top:12px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:140px;flex:1}
+.f label{font-size:12.5px;font-weight:600}
+.hint{font-size:12px;color:var(--muted)}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:8px 12px}
+button:hover:not(:disabled){border-color:var(--pen)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:var(--pen);color:var(--paper);border-color:var(--pen);font-weight:600}
+button.mini{padding:6px 9px;font-size:12.5px}
+input[type=range]{width:100%;accent-color:var(--pen)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;flex:1;background:var(--bg);padding:7px 8px;font-size:13px}
+.seg button.on{background:var(--pen);color:var(--paper)}
+.checker{background-image:linear-gradient(45deg,var(--check2) 25%,transparent 25%,transparent 75%,var(--check2) 75%),linear-gradient(45deg,var(--check2) 25%,transparent 25%,transparent 75%,var(--check2) 75%);background-color:var(--check1);background-size:16px 16px;background-position:0 0,8px 8px;border:1px solid var(--line);border-radius:10px;min-height:90px;display:grid;place-items:center;padding:8px;margin-top:12px}
+.checker img{max-width:100%;max-height:120px;display:block}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:10px 0}
+.toolbar .f{flex:0 0 150px;min-width:120px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chip{border:1px solid var(--pen);color:var(--pen);background:var(--pen-soft);border-radius:999px;padding:4px 11px;font-size:12.5px}
+.desk{background:var(--desk);border-radius:10px;padding:14px;max-height:75vh;overflow:auto}
+.page{position:relative;margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:crosshair;max-width:100%;touch-action:manipulation}
+.page canvas{display:block;width:100%;height:auto}
+.pno{position:absolute;left:6px;top:4px;font-size:11px;color:#667;background:rgba(255,255,255,.85);padding:0 6px;border-radius:4px;pointer-events:none}
+.ph{position:absolute;outline:1.5px dashed transparent;cursor:move;touch-action:none}
+.ph.sel{outline-color:var(--pen)}
+.ph img{width:100%;height:100%;display:block;pointer-events:none;user-select:none}
+.ph .rs{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:var(--pen);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;display:none}
+.ph .xx{position:absolute;right:-9px;top:-11px;width:20px;height:20px;line-height:16px;padding:0;border-radius:50%;background:var(--warn);color:#fff;border:2px solid #fff;font-size:13px;display:none}
+.ph.sel .rs,.ph.sel .xx{display:block}
+.toast{font-size:13px;color:var(--ok);min-height:20px;margin-top:8px}
+.toast.err{color:var(--warn)}
+.empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:14px}
+@media (max-width:640px){
+  body{font-size:14.5px}
+  section.card{padding:14px}
+  .row{gap:12px}
+  .row .f,.toolbar .f{flex:1 1 100%;min-width:0}
+  .row>button,.toolbar>button{flex:1 1 auto}
+  button{min-height:42px}
+  button.mini{padding:9px 11px;font-size:13px}
+  .seg button{padding:9px 4px;font-size:13px;min-height:42px;white-space:nowrap}
+  .desk{max-height:none;padding:8px}
+  .drop{padding:14px 10px}
+  header.top{align-items:flex-start}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Підпис у PDF</h1>
+      <p class="sub">Завантажте PDF і фото підпису, натисніть на сторінці там, де має стояти підпис, і збережіть готовий PDF. Конвертувати у Word не потрібно.</p>
+    </div>
+    <button id="themeBtn" class="mini" type="button">Тема</button>
+  </header>
+
+  <section class="card">
+    <h2><span class="step" id="st1">1</span>Файли</h2>
+    <p class="lead">PDF-документ і фото підпису на білому аркуші.</p>
+    <div class="two">
+      <div>
+        <div class="drop" id="dropPdf" tabindex="0" role="button" aria-label="Вибрати PDF"><div id="pdfLbl"><b>Перетягніть PDF сюди</b> або натисніть, щоб вибрати</div></div>
+        <input type="file" id="pdfIn" accept=".pdf,application/pdf" hidden>
+      </div>
+      <div>
+        <div class="drop" id="dropSig" tabindex="0" role="button" aria-label="Вибрати фото підпису"><div id="sigLbl"><b>Перетягніть фото підпису сюди</b> або натисніть, щоб вибрати</div></div>
+        <input type="file" id="sigIn" accept="image/*" hidden>
+      </div>
+    </div>
+    <div class="row">
+      <div class="f"><label for="sens">Чіткість підпису: <span id="sensV">50</span></label><input type="range" id="sens" min="1" max="100" value="50"></div>
+      <div class="f"><label>Колір</label><div class="seg" id="colorSeg"><button type="button" class="on" data-c="blue">Синій</button><button type="button" data-c="black">Чорний</button><button type="button" data-c="orig">Оригінал</button></div></div>
+      <button type="button" class="mini" id="rotBtn" disabled>Повернути фото на 90°</button>
+    </div>
+    <div class="checker" id="sigPrev"><span class="hint">Тут з'явиться підпис без фону</span></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step" id="st2">2</span>Розмістіть підпис</h2>
+    <p class="lead">Натисніть на сторінці, куди поставити підпис. Його можна перетягувати, а за кутову точку змінювати розмір. Для підписів на кожній сторінці виберіть один і натисніть «На всі сторінки».</p>
+    <div class="chips" id="chips"></div>
+    <div class="toolbar">
+      <div class="f"><label for="wmm">Ширина виділеного, мм</label><input type="number" id="wmm" min="8" max="150" step="1" value="35" disabled></div>
+      <button type="button" class="mini" id="allBtn" disabled>На всі сторінки</button>
+      <button type="button" class="mini" id="delBtn" disabled>Видалити виділений</button>
+      <button type="button" class="mini" id="clrBtn" disabled>Прибрати всі</button>
+      <span class="hint" id="cnt"></span>
+    </div>
+    <div class="desk" id="desk"><div class="empty">Спершу завантажте PDF.</div></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step" id="st3">3</span>Результат</h2>
+    <p class="lead">Готовий PDF має той самий вигляд, що й на екрані. Оригінал не змінюється.</p>
+    <div class="row" style="margin-top:0"><button type="button" class="primary" id="goBtn" disabled>Зберегти PDF із підписом</button></div>
+    <div class="toast" id="toast" role="status"></div>
+  </section>
+</div>
+
+<script src="pdf.min.js"></script>
+<script src="pdf-lib.min.js"></script>
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);};
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc="pdf.worker.min.js";
+var MM=72/25.4;
+var S={pdfBytes:null,pdfName:"",pdf:null,pages:[],sigImg:null,rot:0,color:"blue",sigBlob:null,sigUrl:"",sigW:0,sigH:0,pl:[],sel:null,uid:1};
+
+function toast(m,err){var t=$("toast");t.textContent=m;t.className="toast"+(err?" err":"");}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function wireDrop(box,input,cb){
+  box.addEventListener("click",function(){input.click();});
+  box.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click();}});
+  ["dragenter","dragover"].forEach(function(ev){box.addEventListener(ev,function(e){e.preventDefault();box.classList.add("over");});});
+  ["dragleave","drop"].forEach(function(ev){box.addEventListener(ev,function(e){e.preventDefault();box.classList.remove("over");});});
+  box.addEventListener("drop",function(e){var f=e.dataTransfer.files[0];if(f)cb(f);});
+  input.addEventListener("change",function(){if(input.files[0])cb(input.files[0]);input.value="";});
+}
+wireDrop($("dropPdf"),$("pdfIn"),loadPdf);
+wireDrop($("dropSig"),$("sigIn"),loadSig);
+
+/* ---------- PDF ---------- */
+async function loadPdf(f){
+  if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf"){toast("Потрібен файл PDF.",true);return;}
+  if(!window.pdfjsLib||!window.PDFLib){toast("Не завантажилися модулі сторінки. Перевірте інтернет і оновіть сторінку.",true);return;}
+  try{
+    var buf=await f.arrayBuffer();
+    S.pdfBytes=new Uint8Array(buf.slice(0));
+    S.pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  }catch(e){S.pdf=null;toast("Не вдалося відкрити PDF: "+e.message,true);return;}
+  S.pdfName=f.name;S.pl=[];S.sel=null;
+  $("pdfLbl").innerHTML='<span class="name">'+esc(f.name)+'</span><br><span class="hint">'+S.pdf.numPages+' стор. Натисніть, щоб вибрати інший</span>';
+  toast("");
+  await renderPages();await suggest();refresh();
+}
+async function renderPages(){
+  var desk=$("desk");desk.innerHTML="";S.pages=[];
+  var maxW=Math.min(760,Math.max(280,desk.clientWidth-28)),dpr=Math.min(2,window.devicePixelRatio||1);
+  for(var n=1;n<=S.pdf.numPages;n++){
+    var page=await S.pdf.getPage(n),vp1=page.getViewport({scale:1}),sc=maxW/vp1.width,vp=page.getViewport({scale:sc*dpr});
+    var wrap=document.createElement("div");wrap.className="page";wrap.style.width=maxW+"px";wrap.dataset.i=n-1;
+    var cv=document.createElement("canvas");cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
+    wrap.appendChild(cv);
+    var no=document.createElement("div");no.className="pno";no.textContent="Стор. "+n;wrap.appendChild(no);
+    desk.appendChild(wrap);
+    await page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+    S.pages.push({el:wrap,wPt:vp1.width,hPt:vp1.height,rotate:page.rotate||0,num:n,pdfPage:page});
+  }
+  drawAll();
+}
+
+/* ---------- підказки місць ---------- */
+async function suggest(){
+  var chips=$("chips");chips.innerHTML="";S.sugg=[];
+  for(var i=0;i<S.pages.length;i++){
+    var pg=S.pages[i],tc=await pg.pdfPage.getTextContent();
+    tc.items.forEach(function(it){
+      if(!it.str)return;
+      if(/\(\s*підпис\s*\)/i.test(it.str)||/^\s*підпис\s*$/i.test(it.str)){
+        var x=it.transform[4],y=it.transform[5],w=it.width||40;
+        S.sugg.push({page:i,fx:(x+w/2)/pg.wPt,fy:(pg.hPt-y-(it.height||9)*1.1)/pg.hPt,label:"над «(підпис)», стор. "+pg.num});
+      }
+    });
+  }
+  S.sugg=S.sugg.slice(0,8);
+  S.sugg.forEach(function(sg,k){
+    var b=document.createElement("button");b.type="button";b.className="chip";b.textContent="+ "+sg.label;b.dataset.k=k;chips.appendChild(b);
+  });
+  if(!S.sugg.length)chips.innerHTML='<span class="hint">Підписів «(підпис)» у тексті не знайдено. Просто натискайте на потрібне місце.</span>';
+}
+$("chips").addEventListener("click",function(e){
+  var b=e.target.closest("button[data-k]");if(!b)return;
+  if(!S.sigBlob){toast("Спершу додайте фото підпису.",true);return;}
+  var sg=S.sugg[+b.dataset.k],pg=S.pages[sg.page],wPt=(+$("wmm").value||35)*MM,hPt=wPt*S.sigH/S.sigW;
+  addPl(sg.page,sg.fx*pg.wPt-wPt/2,(sg.fy*pg.hPt)-hPt*0.9,wPt);
+  pg.el.scrollIntoView({behavior:"smooth",block:"center"});
+});
+
+/* ---------- підпис: обробка фото ---------- */
+async function loadSig(f){
+  if(!/^image\//.test(f.type)){toast("Потрібне зображення (JPG або PNG).",true);return;}
+  try{
+    var url=URL.createObjectURL(f);
+    S.sigImg=await new Promise(function(res,rej){var i=new Image();i.onload=function(){res(i);};i.onerror=function(){rej(new Error("формат не підтримується"));};i.src=url;});
+    S.rot=0;$("sigLbl").innerHTML='<span class="name">'+esc(f.name)+'</span><br><span class="hint">Натисніть, щоб вибрати інше</span>';
+    $("rotBtn").disabled=false;toast("");processSig();
+  }catch(e){toast("Не вдалося прочитати фото: "+e.message,true);}
+}
+$("rotBtn").addEventListener("click",function(){S.rot=(S.rot+90)%360;processSig();});
+$("sens").addEventListener("input",function(){$("sensV").textContent=this.value;processSig();});
+$("colorSeg").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;
+  S.color=b.getAttribute("data-c");[].forEach.call(this.children,function(x){x.classList.toggle("on",x===b);});processSig();});
+
+function maxFilter(src,w,h,R){
+  var tmp=new Float32Array(w*h),out=new Float32Array(w*h),x,y,k,m,v;
+  for(y=0;y<h;y++)for(x=0;x<w;x++){m=0;for(k=Math.max(0,x-R);k<=Math.min(w-1,x+R);k++){v=src[y*w+k];if(v>m)m=v;}tmp[y*w+x]=m;}
+  for(x=0;x<w;x++)for(y=0;y<h;y++){m=0;for(k=Math.max(0,y-R);k<=Math.min(h-1,y+R);k++){v=tmp[k*w+x];if(v>m)m=v;}out[y*w+x]=m;}
+  return out;
+}
+function boxBlur(src,w,h,R){
+  var tmp=new Float32Array(w*h),out=new Float32Array(w*h),x,y,k,s,n;
+  for(y=0;y<h;y++)for(x=0;x<w;x++){s=0;n=0;for(k=Math.max(0,x-R);k<=Math.min(w-1,x+R);k++){s+=src[y*w+k];n++;}tmp[y*w+x]=s/n;}
+  for(x=0;x<w;x++)for(y=0;y<h;y++){s=0;n=0;for(k=Math.max(0,y-R);k<=Math.min(h-1,y+R);k++){s+=tmp[k*w+x];n++;}out[y*w+x]=s/n;}
+  return out;
+}
+function processSig(){
+  var img=S.sigImg;if(!img)return;
+  var MAX=1400,sc=Math.min(1,MAX/Math.max(img.naturalWidth,img.naturalHeight));
+  var w0=Math.round(img.naturalWidth*sc),h0=Math.round(img.naturalHeight*sc),rot=S.rot,swap=rot===90||rot===270,W=swap?h0:w0,H=swap?w0:h0;
+  var cv=document.createElement("canvas");cv.width=W;cv.height=H;var cx=cv.getContext("2d",{willReadFrequently:true});
+  cx.translate(W/2,H/2);cx.rotate(rot*Math.PI/180);cx.drawImage(img,-w0/2,-h0/2,w0,h0);cx.setTransform(1,0,0,1,0,0);
+  var id=cx.getImageData(0,0,W,H),d=id.data,n=W*H,gray=new Float32Array(n),i,x,y;
+  for(i=0;i<n;i++)gray[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+  var F=4,sw=Math.ceil(W/F),sh=Math.ceil(H/F),small=new Float32Array(sw*sh);
+  for(y=0;y<sh;y++)for(x=0;x<sw;x++){var s=0,c=0;for(var yy=y*F;yy<Math.min(H,y*F+F);yy++)for(var xx=x*F;xx<Math.min(W,x*F+F);xx++){s+=gray[yy*W+xx];c++;}small[y*sw+x]=s/c;}
+  var bg=boxBlur(boxBlur(maxFilter(small,sw,sh,9),sw,sh,5),sw,sh,5);
+  var sens=+$("sens").value,t0=40-(sens/100)*34,t1=t0+55,alpha=new Float32Array(n);
+  for(y=0;y<H;y++){var by=Math.min(sh-1,y/F),y0=Math.floor(by),y1=Math.min(sh-1,y0+1),fy=by-y0;
+    for(x=0;x<W;x++){var bx=Math.min(sw-1,x/F),x0=Math.floor(bx),x1=Math.min(sw-1,x0+1),fx=bx-x0;
+      var b=(bg[y0*sw+x0]*(1-fx)+bg[y0*sw+x1]*fx)*(1-fy)+(bg[y1*sw+x0]*(1-fx)+bg[y1*sw+x1]*fx)*fy;
+      var v=(b-gray[y*W+x]-t0)/(t1-t0);alpha[y*W+x]=v<0?0:(v>1?1:v);}}
+  var clean=new Float32Array(n);
+  for(y=1;y<H-1;y++)for(x=1;x<W-1;x++){var a=alpha[y*W+x];if(a<=0)continue;var cnt=0;
+    for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){if((dx||dy)&&alpha[(y+dy)*W+x+dx]>0.25)cnt++;}
+    clean[y*W+x]=(cnt>=2||a>0.8)?a:0;}
+  var col=S.color==="black"?[20,20,25]:[31,63,191],minX=W,minY=H,maxX=-1,maxY=-1;
+  for(y=0;y<H;y++)for(x=0;x<W;x++){var i2=y*W+x,aa=clean[i2];
+    if(aa>0.15){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+    if(S.color==="orig"){d[i2*4]*=0.6;d[i2*4+1]*=0.6;d[i2*4+2]*=0.6;}else{d[i2*4]=col[0];d[i2*4+1]=col[1];d[i2*4+2]=col[2];}
+    d[i2*4+3]=Math.round(aa*255);}
+  if(maxX<0){S.sigBlob=null;$("sigPrev").innerHTML='<span class="hint">Підпис не знайдено. Збільште чіткість або перефотографуйте на білому аркуші.</span>';refresh();return;}
+  var pad=Math.round(0.04*Math.max(maxX-minX,maxY-minY));
+  minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(W-1,maxX+pad);maxY=Math.min(H-1,maxY+pad);
+  cx.putImageData(id,0,0);
+  var out=document.createElement("canvas");out.width=maxX-minX+1;out.height=maxY-minY+1;
+  out.getContext("2d").drawImage(cv,minX,minY,out.width,out.height,0,0,out.width,out.height);
+  S.sigW=out.width;S.sigH=out.height;
+  out.toBlob(function(bl){
+    S.sigBlob=bl;S.sigUrl=URL.createObjectURL(bl);
+    var im=new Image();im.alt="Підпис без фону";im.src=S.sigUrl;var box=$("sigPrev");box.innerHTML="";box.appendChild(im);
+    drawAll();refresh();
+  },"image/png");
+}
+
+/* ---------- розміщення ---------- */
+function addPl(pi,xPt,yPt,wPt){
+  var pg=S.pages[pi],hPt=wPt*S.sigH/S.sigW;
+  xPt=Math.max(0,Math.min(pg.wPt-wPt,xPt));yPt=Math.max(0,Math.min(pg.hPt-hPt,yPt));
+  var p={id:S.uid++,page:pi,x:xPt,y:yPt,w:wPt};S.pl.push(p);S.sel=p.id;drawAll();refresh();
+}
+function selPl(){return S.pl.filter(function(p){return p.id===S.sel;})[0];}
+function drawAll(){
+  S.pages.forEach(function(pg){
+    [].slice.call(pg.el.querySelectorAll(".ph")).forEach(function(n){n.remove();});
+  });
+  if(!S.sigUrl)return;
+  S.pl.forEach(function(p){
+    var pg=S.pages[p.page];if(!pg)return;
+    var k=pg.el.clientWidth/pg.wPt,hPt=p.w*S.sigH/S.sigW;
+    var el=document.createElement("div");el.className="ph"+(p.id===S.sel?" sel":"");el.dataset.id=p.id;
+    el.style.left=(p.x*k)+"px";el.style.top=(p.y*k)+"px";el.style.width=(p.w*k)+"px";el.style.height=(hPt*k)+"px";
+    var im=new Image();im.src=S.sigUrl;im.alt="";el.appendChild(im);
+    var rs=document.createElement("div");rs.className="rs";rs.dataset.role="rs";el.appendChild(rs);
+    var xx=document.createElement("button");xx.type="button";xx.className="xx";xx.dataset.role="del";xx.textContent="×";xx.title="Видалити";el.appendChild(xx);
+    pg.el.appendChild(el);
+  });
+  var s=selPl();if(s){$("wmm").value=Math.round(s.w/MM);}
+}
+$("desk").addEventListener("pointerdown",function(e){
+  var pageEl=e.target.closest(".page");if(!pageEl)return;
+  var ph=e.target.closest(".ph"),pg=S.pages[+pageEl.dataset.i],k=pageEl.clientWidth/pg.wPt;
+  if(!ph){ // клік по порожньому місцю: новий підпис
+    if(!S.sigBlob){toast("Спершу додайте фото підпису.",true);return;}
+    var r=pageEl.getBoundingClientRect(),wPt=(+$("wmm").value||35)*MM,hPt=wPt*S.sigH/S.sigW;
+    addPl(+pageEl.dataset.i,(e.clientX-r.left)/k-wPt/2,(e.clientY-r.top)/k-hPt/2,wPt);return;
+  }
+  var id=+ph.dataset.id,p=S.pl.filter(function(q){return q.id===id;})[0];
+  var role=e.target.getAttribute("data-role");
+  if(role==="del"){S.pl=S.pl.filter(function(q){return q.id!==id;});S.sel=null;drawAll();refresh();return;}
+  S.sel=id;
+  var startX=e.clientX,startY=e.clientY,ox=p.x,oy=p.y,ow=p.w,mode=role==="rs"?"rs":"mv";
+  e.preventDefault();
+  function mv(ev){
+    var dx=(ev.clientX-startX)/k,dy=(ev.clientY-startY)/k;
+    if(mode==="mv"){p.x=Math.max(0,Math.min(pg.wPt-p.w,ox+dx));p.y=Math.max(0,Math.min(pg.hPt-p.w*S.sigH/S.sigW,oy+dy));}
+    else{p.w=Math.max(8*MM,Math.min(pg.wPt-p.x,ow+dx));}
+    var hPt=p.w*S.sigH/S.sigW;
+    ph.style.left=p.x*k+"px";ph.style.top=p.y*k+"px";ph.style.width=p.w*k+"px";ph.style.height=hPt*k+"px";
+    $("wmm").value=Math.round(p.w/MM);
+  }
+  function up(){document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);drawAll();refresh();}
+  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);
+  drawAll();
+});
+document.addEventListener("keydown",function(e){
+  var p=selPl();if(!p||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
+  var st=e.shiftKey?5:1,pg=S.pages[p.page];
+  if(e.key==="Delete"||e.key==="Backspace"){S.pl=S.pl.filter(function(q){return q!==p;});S.sel=null;}
+  else if(e.key==="ArrowLeft")p.x=Math.max(0,p.x-st);else if(e.key==="ArrowRight")p.x=Math.min(pg.wPt-p.w,p.x+st);
+  else if(e.key==="ArrowUp")p.y=Math.max(0,p.y-st);else if(e.key==="ArrowDown")p.y=p.y+st;
+  else return;
+  e.preventDefault();drawAll();refresh();
+});
+$("wmm").addEventListener("input",function(){
+  var p=selPl();if(!p)return;var pg=S.pages[p.page];p.w=Math.max(8*MM,Math.min(pg.wPt,(+this.value||35)*MM));p.x=Math.min(p.x,pg.wPt-p.w);drawAll();
+});
+$("delBtn").addEventListener("click",function(){S.pl=S.pl.filter(function(q){return q.id!==S.sel;});S.sel=null;drawAll();refresh();});
+$("clrBtn").addEventListener("click",function(){S.pl=[];S.sel=null;drawAll();refresh();});
+$("allBtn").addEventListener("click",function(){
+  var p=selPl();if(!p)return;var src=S.pages[p.page];
+  S.pl=S.pl.filter(function(q){return q===p||q.page===p.page;});
+  S.pages.forEach(function(pg,i){
+    if(i===p.page)return;
+    var w=p.w*(pg.wPt/src.wPt),cx=(p.x+p.w/2)/src.wPt*pg.wPt,fromBottom=src.hPt-(p.y+p.w*S.sigH/S.sigW);
+    var h=w*S.sigH/S.sigW;
+    S.pl.push({id:S.uid++,page:i,x:cx-w/2,y:pg.hPt-fromBottom-h,w:w});
+  });
+  drawAll();refresh();
+});
+
+/* ---------- збереження ---------- */
+$("goBtn").addEventListener("click",async function(){
+  this.disabled=true;toast("Створюю PDF…");
+  try{
+    var doc=await PDFLib.PDFDocument.load(S.pdfBytes,{ignoreEncryption:true});
+    var png=await doc.embedPng(await S.sigBlob.arrayBuffer()),pages=doc.getPages(),skipped=0;
+    S.pl.forEach(function(p){
+      var pg=pages[p.page],pv=S.pages[p.page];
+      if(!pg)return;
+      if(pv.rotate){skipped++;return;}
+      var cb=pg.getCropBox?pg.getCropBox():pg.getMediaBox(),sx=cb.width/pv.wPt,w=p.w*sx,h=w*S.sigH/S.sigW;
+      pg.drawImage(png,{x:cb.x+p.x*sx,y:cb.y+cb.height-p.y*sx-h,width:w,height:h});
+    });
+    var bytes=await doc.save(),name=S.pdfName.replace(/\.pdf$/i,"")+"_підписаний.pdf",blob=new Blob([bytes],{type:"application/pdf"});
+    var d=(typeof claude!=="undefined")?await claude.use("downloads"):null;
+    if(d){await d.save({filename:name,data:blob});}
+    else{var url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);}
+    toast("Готово: "+name+(skipped?". Пропущено підписів на повернутих сторінках: "+skipped+".":""),!!skipped);
+    $("st3").classList.add("done");
+  }catch(e){if(e&&e.code==="declined")toast("Збереження скасовано.");else toast("Не вийшло: "+(e.message||e.code),true);}
+  refresh();
+});
+
+function refresh(){
+  var okPdf=!!S.pdf,okSig=!!S.sigBlob,has=S.pl.length>0,p=selPl();
+  $("st1").classList.toggle("done",okPdf&&okSig);$("st2").classList.toggle("done",has);
+  $("goBtn").disabled=!(okPdf&&okSig&&has);
+  $("clrBtn").disabled=!has;$("delBtn").disabled=!p;$("allBtn").disabled=!p||S.pages.length<2;$("wmm").disabled=!p;
+  $("cnt").textContent=has?("Підписів у документі: "+S.pl.length):"";
+}
+window.addEventListener("resize",function(){drawAll();});
+$("themeBtn").addEventListener("click",function(){
+  var r=document.documentElement,cur=r.getAttribute("data-theme");
+  var dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme",dark?"light":"dark");
+});
+})();
+</script>
+
+</html>
